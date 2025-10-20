@@ -21,34 +21,64 @@ document.addEventListener("DOMContentLoaded", () => {
         const spotsLeft = details.max_participants - details.participants.length;
 
           // Crea la lista dei partecipanti come elenco puntato
-          let participantsHTML = '';
-          if (details.participants && details.participants.length > 0) {
-            participantsHTML = `
-              <div class="participants-section">
-                <strong>Partecipanti iscritti:</strong>
-                <ul class="participants-list">
-                  ${details.participants.map(p => `<li>${p}</li>`).join('')}
-                </ul>
+        let participantsHTML = '';
+        if (details.participants && details.participants.length > 0) {
+          participantsHTML = `
+            <div class="participants-section">
+              <strong>Partecipanti iscritti:</strong>
+              <div class="participants-list">
+                ${details.participants.map(p => `
+                  <span class="participant-item" data-activity="${encodeURIComponent(name)}" data-email="${encodeURIComponent(p)}">
+                    <span class="participant-email">${p}</span>
+                    <span class="delete-participant" title="Rimuovi partecipante">&times;</span>
+                  </span>
+                `).join('')}
               </div>
-            `;
-          } else {
-            participantsHTML = `
-              <div class="participants-section">
-                <strong>Partecipanti iscritti:</strong>
-                <p class="no-participants">Nessun partecipante ancora</p>
-              </div>
-            `;
-          }
-
-          activityCard.innerHTML = `
-            <h4>${name}</h4>
-            <p>${details.description}</p>
-            <p><strong>Schedule:</strong> ${details.schedule}</p>
-            <p><strong>Availability:</strong> ${spotsLeft} spots left</p>
-            ${participantsHTML}
+            </div>
           `;
+        } else {
+          participantsHTML = `
+            <div class="participants-section">
+              <strong>Partecipanti iscritti:</strong>
+              <p class="no-participants">Nessun partecipante ancora</p>
+            </div>
+          `;
+        }
+
+        activityCard.innerHTML = `
+          <h4>${name}</h4>
+          <p>${details.description}</p>
+          <p><strong>Schedule:</strong> ${details.schedule}</p>
+          <p><strong>Availability:</strong> ${spotsLeft} spots left</p>
+          ${participantsHTML}
+        `;
 
         activitiesList.appendChild(activityCard);
+
+        // Listener per cancellazione partecipante
+        const deleteIcons = activityCard.querySelectorAll('.delete-participant');
+        deleteIcons.forEach(icon => {
+          icon.addEventListener('click', async (e) => {
+            const participantItem = e.target.closest('.participant-item');
+            const email = decodeURIComponent(participantItem.getAttribute('data-email'));
+            const activity = decodeURIComponent(participantItem.getAttribute('data-activity'));
+            if (confirm(`Vuoi davvero rimuovere ${email} da "${activity}"?`)) {
+              try {
+                const response = await fetch(`/activities/${encodeURIComponent(activity)}/signup?email=${encodeURIComponent(email)}`, {
+                  method: 'DELETE',
+                });
+                const result = await response.json();
+                if (response.ok) {
+                  fetchActivities();
+                } else {
+                  alert(result.detail || 'Errore nella rimozione del partecipante');
+                }
+              } catch (error) {
+                alert('Errore di rete nella rimozione del partecipante');
+              }
+            }
+          });
+        });
 
         // Add option to select dropdown
         const option = document.createElement("option");
